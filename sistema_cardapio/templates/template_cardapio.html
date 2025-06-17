@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-T">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio - {{NOME_DA_LOJA}}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #333; }
+        .product-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+        .product-card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; transition: box-shadow 0.3s; }
+        .product-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .product-card img { max-width: 100%; height: 150px; object-fit: cover; border-radius: 5px; }
+        .product-card h3 { margin: 10px 0 5px; }
+        .product-card p { color: #666; font-size: 0.9em; }
+        .price { font-weight: bold; color: #007BFF; font-size: 1.2em; }
+        .add-btn { background-color: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; width: 100%; }
+        .add-btn:hover { background-color: #218838; }
+        .cart { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 30px; }
+        .cart-item { display: flex; justify-content: space-between; padding: 5px 0; }
+        #total-price { font-weight: bold; font-size: 1.3em; text-align: right; margin-top: 10px; }
+        #checkout-btn { background-color: #007BFF; color: white; border: none; padding: 15px; font-size: 1.2em; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 20px; }
+        #checkout-btn:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{NOME_DA_LOJA}}</h1>
+        <h2>Nosso Cardápio</h2>
+        <div class="product-list" id="product-list">
+            <!-- Os produtos serão inseridos aqui pelo JavaScript -->
+        </div>
+
+        <div class="cart">
+            <h2>🛒 Carrinho de Compras</h2>
+            <div id="cart-items">
+                <p>Seu carrinho está vazio.</p>
+            </div>
+            <div id="total-price">Total: R$ 0,00</div>
+            <button id="checkout-btn" onclick="finalizarPedido()">Finalizar Pedido</button>
+        </div>
+    </div>
+
+    <script>
+        // Os dados do estoque e config serão injetados aqui pelo Python
+        const produtos = {{DADOS_ESTOQUE}};
+        const config = {{DADOS_CONFIG}};
+
+        let carrinho = [];
+
+        function renderizarProdutos() {
+            const productList = document.getElementById('product-list');
+            productList.innerHTML = '';
+            produtos.forEach(produto => {
+                productList.innerHTML += `
+                    <div class="product-card">
+                        <img src="${produto.imagem_url}" alt="${produto.nome}">
+                        <h3>${produto.nome}</h3>
+                        <p>${produto.descricao}</p>
+                        <div class="price">R$ ${produto.preco.toFixed(2).replace('.', ',')}</div>
+                        <button class="add-btn" onclick="adicionarAoCarrinho(${produto.id})">Adicionar</button>
+                    </div>
+                `;
+            });
+        }
+
+        function adicionarAoCarrinho(produtoId) {
+            const produto = produtos.find(p => p.id === produtoId);
+            carrinho.push(produto);
+            renderizarCarrinho();
+        }
+
+        function renderizarCarrinho() {
+            const cartItems = document.getElementById('cart-items');
+            const totalPriceEl = document.getElementById('total-price');
+            let total = 0;
+
+            if (carrinho.length === 0) {
+                cartItems.innerHTML = '<p>Seu carrinho está vazio.</p>';
+            } else {
+                cartItems.innerHTML = '';
+                carrinho.forEach((item, index) => {
+                    cartItems.innerHTML += `
+                        <div class="cart-item">
+                            <span>${item.nome}</span>
+                            <span>R$ ${item.preco.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                    `;
+                    total += item.preco;
+                });
+            }
+            totalPriceEl.innerHTML = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+
+        function finalizarPedido() {
+            if (carrinho.length === 0) {
+                alert("Seu carrinho está vazio!");
+                return;
+            }
+
+            let mensagem = `Olá, ${config.nome_loja}! Gostaria de fazer o seguinte pedido:\n\n`;
+            carrinho.forEach(item => {
+                mensagem += `- ${item.nome} (R$ ${item.preco.toFixed(2).replace('.', ',')})\n`;
+            });
+            let total = carrinho.reduce((acc, item) => acc + item.preco, 0);
+            mensagem += `\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+
+            if (config.metodo_pedido === 'whatsapp') {
+                const link = `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(mensagem)}`;
+                window.open(link, '_blank');
+            } else if (config.metodo_pedido === 'email') {
+                const link = `mailto:${config.email}?subject=${encodeURIComponent(`Pedido - ${config.nome_loja}`)}&body=${encodeURIComponent(mensagem)}`;
+                window.open(link, '_blank');
+            }
+        }
+
+        // Inicializa a página
+        document.addEventListener('DOMContentLoaded', () => {
+            renderizarProdutos();
+            renderizarCarrinho();
+        });
+    </script>
+</body>
+</html>
